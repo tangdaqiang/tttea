@@ -104,7 +104,7 @@ console.log("- API Key后缀:", SILICONFLOW_API_KEY.slice(-8))
       let errorMessage = "AI服务暂时不可用，请稍后重试"
       let errorCode = "UNKNOWN_ERROR"
       
-      switch (deepseekResponse.status) {
+      switch (siliconflowResponse.status) {
         case 400:
           errorMessage = "请求格式错误，请重新尝试"
           errorCode = "BAD_REQUEST"
