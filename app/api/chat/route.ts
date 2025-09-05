@@ -143,7 +143,7 @@ console.log("- API Key后缀:", SILICONFLOW_API_KEY.slice(-8))
           const errorData = `data: ${JSON.stringify({ 
             error: errorMessage, 
             code: errorCode,
-            status: deepseekResponse.status 
+            status: siliconflowResponse.status 
           })}\n\n`
           controller.enqueue(encoder.encode(errorData))
           controller.close()
