@@ -133,8 +133,8 @@ console.log("- API Key后缀:", SILICONFLOW_API_KEY.slice(-8))
           errorCode = "SERVICE_UNAVAILABLE"
           break
         default:
-          errorMessage = `AI服务错误 (${deepseekResponse.status})，请稍后重试`
-          errorCode = `HTTP_${deepseekResponse.status}`
+          errorMessage = `AI服务错误 (${siliconflowResponse.status})，请稍后重试`
+          errorCode = `HTTP_${siliconflowResponse.status}`
       }
 
       const encoder = new TextEncoder()
