@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server"
 
 // SiliconFlow API configuration
 const SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/chat/completions"
-const SILICONFLOW_API_KEY = process.env.DEEPSEEK_API_KEY || ""
+const SILICONFLOW_API_KEY = process.env.SILICONFLOW_API_KEY || ""
 
 // 小敖聊天系统提示词
 const CHAT_SYSTEM_PROMPT = `你是"小敖"，轻茶纪网站的AI伙伴，专门为18-30岁年轻女性用户提供奶茶健康管理相关的情绪疏导和建议。
