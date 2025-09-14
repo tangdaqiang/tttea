@@ -228,13 +228,13 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
           // 添加新记录到现有记录列表中，保留所有用户的记录
           records.push(newRecord)
           localStorage.setItem('teaRecords', JSON.stringify(records))
-          return { success: true, data: newRecord }
+          return { success: true, data: newRecord, source: 'localStorage', message: '记录已保存到本地，稍后会同步到云端' }
         }
         
         return { success: false, error: error.message }
       }
       
-      return { success: true, data }
+      return { success: true, data, source: 'database' }
     } catch (insertError) {
       console.error('数据库插入异常:', insertError)
       // 降级到本地存储
@@ -249,7 +249,7 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
       // 添加新记录到现有记录列表中，保留所有用户的记录
       records.push(newRecord)
       localStorage.setItem('teaRecords', JSON.stringify(records))
-      return { success: true, data: newRecord }
+      return { success: true, data: newRecord, source: 'localStorage', message: '记录已保存到本地，稍后会同步到云端' }
     }
   } catch (error) {
     console.error('添加奶茶记录异常:', error)

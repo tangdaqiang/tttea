@@ -193,9 +193,14 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
         // 不需要手动更新localStorage，因为addTeaRecord/updateTeaRecord函数已经处理了
         
         if (result.success) {
-          setSaveMessage(editingRecord ? '记录已更新！' : '记录已成功保存！')
+          // 根据返回的source字段显示不同的消息
+          if (result.source === 'localStorage' && result.message) {
+            setSaveMessage(result.message)
+          } else {
+            setSaveMessage(editingRecord ? '记录已更新！' : '记录已成功保存！')
+          }
         } else {
-          setSaveMessage(editingRecord ? '记录已更新到本地存储！' : '记录已保存到本地存储！')
+          setSaveMessage('保存失败，请重试')
         }
         
         setTimeout(() => {

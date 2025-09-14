@@ -397,10 +397,16 @@ export default function MyRecordsPage() {
                   }
                   
                   const result = await addTeaRecord(teaRecordData)
-                  if (result.success && result.data && result.data.id) {
-                    // 使用数据库返回的ID更新记录
+                  if (result.success && result.data) {
+                    // 使用返回的ID更新记录
                     newRecord.id = result.data.id as string
-                    console.log('记录保存到数据库成功')
+                    console.log(result.source === 'database' ? '记录保存到数据库成功' : '记录保存到本地存储')
+                    
+                    // 如果有特定消息，可以在这里显示通知给用户
+                    if (result.message) {
+                      console.log(result.message)
+                      // 这里可以添加一个通知系统来显示消息
+                    }
                   }
                 }
                 
