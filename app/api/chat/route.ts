@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // 检查API密钥
     if (!SILICONFLOW_API_KEY) {
-      console.error("错误: API密钥未设置")
+      console.error("错误: API密钥未设置", { keyLength: SILICONFLOW_API_KEY.length })
       return new Response(JSON.stringify({ error: "AI服务配置错误" }), {
         status: 500,
         headers: { "Content-Type": "application/json" },
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
 console.log(`- API Key中间: ...${SILICONFLOW_API_KEY.slice(15, 35)}...`)
 console.log("- API Key后缀:", SILICONFLOW_API_KEY.slice(-8))
 
-    const siliconflowResponse = await fetch(SILICONFLOW_API_URL, {
+    console.log('AI请求参数:', { url: SILICONFLOW_API_URL, method: 'POST', headers: { 'Authorization': `Bearer ${SILICONFLOW_API_KEY.substring(0, 5)}...` } });
+          const siliconflowResponse = await fetch(SILICONFLOW_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${SILICONFLOW_API_KEY}`,
@@ -91,7 +92,8 @@ console.log("- API Key后缀:", SILICONFLOW_API_KEY.slice(-8))
     })
 
     // 检查API响应状态
-    if (!siliconflowResponse.ok) {
+    console.log('AI响应状态:', siliconflowResponse.status, siliconflowResponse.statusText);
+      if (!siliconflowResponse.ok) {
       const errorText = await siliconflowResponse.text()
       console.error("SiliconFlow API 错误:", {
         status: siliconflowResponse.status,
