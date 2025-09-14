@@ -169,65 +169,25 @@ function convertSweetnessLevelToNumber(sweetness: string | number): number {
  */
 export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; data?: TeaRecord; error?: string }> {
   try {
-    const client = getSupabaseClient()
-    if (!client) {
-      // 保存到localStorage
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const newRecord = {
-        ...record,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      records.push(newRecord)
-      localStorage.setItem('teaRecords', JSON.stringify(records))
-      return { success: true, data: newRecord }
-    }
-    
-    // 检查并创建用户（如果不存在）
-    const { data: existingUser } = await client
-      .from('users')
-      .select('id')
-      .eq('id', record.user_id)
-      .single()
-      
-    // 如果用户不存在，创建一个基本用户记录
-    if (!existingUser) {
-      await client
-        .from('users')
-        .upsert({
-          id: record.user_id,
-          username: `user_${record.user_id.substring(0, 8)}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-    }
-
     // 转换糖分级别为数字并处理toppings字段
     const processedRecord = {
       ...record,
       sweetness_level: convertSweetnessLevelToNumber(record.sweetness_level),
-      toppings: record.toppings && record.toppings.length > 0 ? record.toppings : [],
-      tea_product_id: record.tea_product_id || null // 避免外键约束错误
+      toppings: record.toppings && record.toppings.length > 0 ? record.toppings : []
     }
 
-    const { data, error } = await client
-      .from('tea_records')
-      .insert({
-        ...processedRecord,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('添加奶茶记录失败:', error)
-      return { success: false, error: error.message }
+    // 保存到localStorage
+    const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
+    const newRecord = {
+      ...processedRecord,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }
-
-    return { success: true, data }
+    
+    records.push(newRecord)
+    localStorage.setItem('teaRecords', JSON.stringify(records))
+    return { success: true, data: newRecord }
   } catch (error) {
     console.error('添加奶茶记录异常:', error)
     return { success: false, error: '添加奶茶记录失败' }
@@ -239,31 +199,14 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
  */
 export async function getUserTeaRecords(userId: string, limit: number = 50, offset: number = 0): Promise<{ success: boolean; data?: TeaRecord[]; error?: string }> {
   try {
-    const client = getSupabaseClient()
-    if (!client) {
-      // 从localStorage获取记录
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const userRecords = records
-        .filter((r: TeaRecord) => r.user_id === userId)
-        .sort((a: TeaRecord, b: TeaRecord) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
-        .slice(offset, offset + limit)
-      
-      return { success: true, data: userRecords }
-    }
-
-    const { data, error } = await client
-      .from('tea_records')
-      .select('*')
-      .eq('user_id', userId)
-      .order('recorded_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('获取奶茶记录失败:', error)
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, data: data || [] }
+    // 从localStorage获取记录
+    const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
+    const userRecords = records
+      .filter((r: TeaRecord) => r.user_id === userId)
+      .sort((a: TeaRecord, b: TeaRecord) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
+      .slice(offset, offset + limit)
+    
+    return { success: true, data: userRecords }
   } catch (error) {
     console.error('获取奶茶记录异常:', error)
     return { success: false, error: '获取奶茶记录失败' }
@@ -280,51 +223,33 @@ export const getTeaRecords = getUserTeaRecords
  */
 export async function updateTeaRecord(recordId: string, userId: string, updates: Partial<TeaRecord>): Promise<{ success: boolean; data?: TeaRecord; error?: string }> {
   try {
-    const client = getSupabaseClient()
-    if (!client) {
-      // 更新localStorage中的记录
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const recordIndex = records.findIndex((r: TeaRecord) => r.id === recordId && r.user_id === userId)
-      
-      if (recordIndex === -1) {
-        return { success: false, error: '记录不存在' }
-      }
-      
-      records[recordIndex] = {
-        ...records[recordIndex],
-        ...updates,
-        updated_at: new Date().toISOString()
-      }
-      
-      localStorage.setItem('teaRecords', JSON.stringify(records))
-      return { success: true, data: records[recordIndex] }
-    }
-
+    // 处理更新数据
+    let processedUpdates = updates
+    
     // 如果更新包含糖分级别，需要转换为数字
-    const processedUpdates = {
-      ...updates,
-      ...(updates.sweetness_level !== undefined && {
+    if (updates.sweetness_level !== undefined) {
+      processedUpdates = {
+        ...updates,
         sweetness_level: convertSweetnessLevelToNumber(updates.sweetness_level)
-      })
+      }
     }
-
-    const { data, error } = await client
-      .from('tea_records')
-      .update({
-        ...processedUpdates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', recordId)
-      .eq('user_id', userId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('更新奶茶记录失败:', error)
-      return { success: false, error: error.message }
+    
+    // 更新localStorage中的记录
+    const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
+    const recordIndex = records.findIndex((r: TeaRecord) => r.id === recordId && r.user_id === userId)
+    
+    if (recordIndex === -1) {
+      return { success: false, error: '记录不存在' }
     }
-
-    return { success: true, data }
+    
+    records[recordIndex] = {
+      ...records[recordIndex],
+      ...processedUpdates,
+      updated_at: new Date().toISOString()
+    }
+    
+    localStorage.setItem('teaRecords', JSON.stringify(records))
+    return { success: true, data: records[recordIndex] }
   } catch (error) {
     console.error('更新奶茶记录异常:', error)
     return { success: false, error: '更新奶茶记录失败' }
@@ -336,27 +261,11 @@ export async function updateTeaRecord(recordId: string, userId: string, updates:
  */
 export async function deleteTeaRecord(recordId: string, userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const client = getSupabaseClient()
-    if (!client) {
-      // 从localStorage删除记录
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const filteredRecords = records.filter((r: TeaRecord) => !(r.id === recordId && r.user_id === userId))
-      
-      localStorage.setItem('teaRecords', JSON.stringify(filteredRecords))
-      return { success: true }
-    }
-
-    const { error } = await client
-      .from('tea_records')
-      .delete()
-      .eq('id', recordId)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('删除奶茶记录失败:', error)
-      return { success: false, error: error.message }
-    }
-
+    // 从localStorage删除记录
+    const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
+    const filteredRecords = records.filter((r: TeaRecord) => !(r.id === recordId && r.user_id === userId))
+    
+    localStorage.setItem('teaRecords', JSON.stringify(filteredRecords))
     return { success: true }
   } catch (error) {
     console.error('删除奶茶记录异常:', error)
