@@ -184,7 +184,7 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
       localStorage.setItem('teaRecords', JSON.stringify(records))
       return { success: true, data: newRecord }
     }
-
+    
     // 检查并创建用户（如果不存在）
     const { data: existingUser } = await client
       .from('users')
