@@ -225,10 +225,9 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
             updated_at: new Date().toISOString()
           }
           
-          // 确保只保留与当前用户相关的记录
-          const userRecords = records.filter((r: any) => r.user_id === record.user_id)
-          userRecords.push(newRecord)
-          localStorage.setItem('teaRecords', JSON.stringify(userRecords))
+          // 添加新记录到现有记录列表中，保留所有用户的记录
+          records.push(newRecord)
+          localStorage.setItem('teaRecords', JSON.stringify(records))
           return { success: true, data: newRecord }
         }
         
@@ -247,14 +246,11 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
         updated_at: new Date().toISOString()
       }
       
-      // 确保只保留与当前用户相关的记录
-      const userRecords = records.filter((r: any) => r.user_id === record.user_id)
-      userRecords.push(newRecord)
-      localStorage.setItem('teaRecords', JSON.stringify(userRecords))
+      // 添加新记录到现有记录列表中，保留所有用户的记录
+      records.push(newRecord)
+      localStorage.setItem('teaRecords', JSON.stringify(records))
       return { success: true, data: newRecord }
     }
-
-    return { success: true, data }
   } catch (error) {
     console.error('添加奶茶记录异常:', error)
     return { success: false, error: '添加奶茶记录失败' }
