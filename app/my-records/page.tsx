@@ -46,11 +46,11 @@ export default function MyRecordsPage() {
   }
 
   const getSugarLevelName = (level: number) => {
-    if (level === 0) return '无'
-    if (level <= 30) return '少'
-    if (level <= 50) return '半'
-    if (level <= 70) return '七分'
-    return '全'
+    if (level === 0) return '无糖'
+    if (level <= 30) return '三分糖'
+    if (level <= 50) return '五分糖'
+    if (level <= 70) return '七分糖'
+    return '全糖'
   }
 
   const handleBudgetChange = async (newBudget: number) => {
