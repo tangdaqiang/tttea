@@ -39,6 +39,9 @@ export default function MyRecordsPage() {
   const getMoodLabel = (moodKey: string) => {
     const moods = {
       happy: '开心',
+      satisfied: '满足',
+      neutral: '一般',
+      disappointed: '失望',
       relaxed: '放松',
       conflicted: '纠结',
       celebrating: '庆祝'
