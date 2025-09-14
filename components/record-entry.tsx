@@ -142,7 +142,7 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
         calories: calculateTotalCalories(),
         isManualCalories,
         cupSize,
-        sugarLevel: getSugarLevelName(sugarLevel),
+        sugarLevel: sugarLevel, // 保存原始数字值，不进行文字转换
         toppings: selectedToppings,
         mood,
         notes,
@@ -180,6 +180,7 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
       }
       
       try {
+        const userId = await getCurrentUserIdClient()
         let result
         
         if (editingRecord) {
@@ -190,17 +191,10 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
           result = await addTeaRecord(teaRecordData)
         }
         
-        // 不需要手动更新localStorage，因为addTeaRecord/updateTeaRecord函数已经处理了
-        
         if (result.success) {
-          // 根据返回的source字段显示不同的消息
-          if (result.source === 'localStorage' && result.message) {
-            setSaveMessage(result.message)
-          } else {
-            setSaveMessage(editingRecord ? '记录已更新！' : '记录已成功保存！')
-          }
+          setSaveMessage(editingRecord ? '记录已更新！' : '记录已成功保存！')
         } else {
-          setSaveMessage('保存失败，请重试')
+          setSaveMessage(editingRecord ? '记录已更新到本地存储！' : '记录已保存到本地存储！')
         }
         
         setTimeout(() => {
@@ -221,11 +215,13 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
     }
   }
 
-  const getSugarLevelName = (percentage: number) => {
-    if (percentage === 0) return "无糖"
-    if (percentage <= 30) return "少糖"
-    if (percentage <= 70) return "半糖"
-    return "全糖"
+  // 与page.tsx中保持一致的糖度转换逻辑
+  const getSugarLevelName = (level: number) => {
+    if (level === 0) return '无糖'
+    if (level <= 30) return '三分糖'
+    if (level <= 50) return '五分糖'
+    if (level <= 70) return '七分糖'
+    return '全糖'
   }
 
   return (
