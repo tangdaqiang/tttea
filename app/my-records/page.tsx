@@ -368,12 +368,24 @@ export default function MyRecordsPage() {
                   }
                 }
                 
-                // 更新本地状态
-                const updatedRecords = records.map(record => 
-                  record.id === editingRecord.id ? { ...record, ...updatedRecord } : record
-                )
-                setRecords(updatedRecords)
-                localStorage.setItem('teaRecords', JSON.stringify(updatedRecords))
+                // 记录已通过updateTeaRecordSync函数更新到localStorage
+                // 重新加载记录以确保数据一致性
+                const result = await getTeaRecords(userId)
+                if (result.success && result.data) {
+                  const formattedRecords = result.data.map((record: any) => ({
+                    id: record.id,
+                    drinkName: record.tea_name || record.drinkName,
+                    brand: record.brand || '未知品牌',
+                    calories: record.estimated_calories || record.calories,
+                    cupSize: record.size || record.cupSize,
+                    sugarLevel: record.sweetness_level || record.sugarLevel,
+                    mood: record.mood,
+                    notes: record.notes,
+                    date: record.recorded_at ? record.recorded_at.split('T')[0] : record.date,
+                    timestamp: record.recorded_at || record.timestamp
+                  }))
+                  setRecords(formattedRecords)
+                }
               } else {
                 // 添加新记录 - 使用数据同步函数
                 const newRecord = {
@@ -397,44 +409,90 @@ export default function MyRecordsPage() {
                   }
                   
                   const result = await addTeaRecord(teaRecordData)
-                  if (result.success && result.data) {
-                    // 使用返回的ID更新记录
+                  if (result.success && result.data && result.data.id) {
+                    // 使用数据库返回的ID更新记录
                     newRecord.id = result.data.id as string
-                    console.log(result.source === 'database' ? '记录保存到数据库成功' : '记录保存到本地存储')
-                    
-                    // 如果有特定消息，可以在这里显示通知给用户
-                    if (result.message) {
-                      console.log(result.message)
-                      // 这里可以添加一个通知系统来显示消息
-                    }
+                    console.log('记录保存到数据库成功')
                   }
                 }
                 
-                // 更新本地状态，但不需要手动更新localStorage，因为addTeaRecord函数已经处理了
-                const updatedRecords = [newRecord, ...records]
-                setRecords(updatedRecords)
+                // 记录已通过addTeaRecord函数添加到localStorage
+                // 重新加载记录以确保数据一致性
+                const result = await getTeaRecords(userId)
+                if (result.success && result.data) {
+                  const formattedRecords = result.data.map((record: any) => ({
+                    id: record.id,
+                    drinkName: record.tea_name || record.drinkName,
+                    brand: record.brand || '未知品牌',
+                    calories: record.estimated_calories || record.calories,
+                    cupSize: record.size || record.cupSize,
+                    sugarLevel: record.sweetness_level || record.sugarLevel,
+                    mood: record.mood,
+                    notes: record.notes,
+                    date: record.recorded_at ? record.recorded_at.split('T')[0] : record.date,
+                    timestamp: record.recorded_at || record.timestamp
+                  }))
+                  setRecords(formattedRecords)
+                }
               }
               
               setShowRecordEntry(false)
               setEditingRecord(null)
             } catch (error) {
-              console.error('保存记录失败:', error)
-              // 即使数据库保存失败，也要更新本地状态
-              // 但不需要手动更新localStorage，因为updateTeaRecord/addTeaRecord函数已经处理了
-              if (editingRecord) {
-                const updatedRecords = records.map(record => 
-                  record.id === editingRecord.id ? { ...record, ...updatedRecord } : record
-                )
-                setRecords(updatedRecords)
-              } else {
-                const newRecord = {
-                  ...updatedRecord,
-                  id: Date.now().toString(),
-                  timestamp: new Date().toISOString()
+                console.error('保存记录失败:', error)
+                // 确保能获取到userId
+                const userId = await getCurrentUserIdClient() || 'local';
+                
+                // 保存失败时，直接使用user-data-sync中的函数保存到localStorage
+                if (editingRecord) {
+                  const teaRecordData = {
+                    user_id: userId,
+                    tea_name: updatedRecord.drinkName,
+                    brand: updatedRecord.brand,
+                    size: updatedRecord.cupSize,
+                    sweetness_level: updatedRecord.sugarLevel,
+                    toppings: updatedRecord.toppings?.map((t: any) => t.name) || [],
+                    estimated_calories: updatedRecord.calories,
+                    mood: updatedRecord.mood,
+                    notes: updatedRecord.notes,
+                    recorded_at: updatedRecord.timestamp || new Date().toISOString()
+                  }
+                  
+                  await updateTeaRecordSync(editingRecord.id, userId, teaRecordData)
+                } else {
+                  const teaRecordData = {
+                    user_id: userId,
+                    tea_name: updatedRecord.drinkName,
+                    brand: updatedRecord.brand,
+                    size: updatedRecord.cupSize,
+                    sweetness_level: updatedRecord.sugarLevel,
+                    toppings: updatedRecord.toppings?.map((t: any) => t.name) || [],
+                    estimated_calories: updatedRecord.calories,
+                    mood: updatedRecord.mood,
+                    notes: updatedRecord.notes,
+                    recorded_at: new Date().toISOString()
+                  }
+                  
+                  await addTeaRecord(teaRecordData)
                 }
-                const updatedRecords = [newRecord, ...records]
-                setRecords(updatedRecords)
-              }
+                
+                // 重新加载记录
+                const result = await getTeaRecords(userId)
+                if (result.success && result.data) {
+                  const formattedRecords = result.data.map((record: any) => ({
+                    id: record.id,
+                    drinkName: record.tea_name || record.drinkName,
+                    brand: record.brand || '未知品牌',
+                    calories: record.estimated_calories || record.calories,
+                    cupSize: record.size || record.cupSize,
+                    sugarLevel: record.sweetness_level || record.sugarLevel,
+                    mood: record.mood,
+                    notes: record.notes,
+                    date: record.recorded_at ? record.recorded_at.split('T')[0] : record.date,
+                    timestamp: record.recorded_at || record.timestamp
+                  }))
+                  setRecords(formattedRecords)
+                }
               
               setShowRecordEntry(false)
               setEditingRecord(null)
