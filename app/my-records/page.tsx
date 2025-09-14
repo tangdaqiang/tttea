@@ -404,10 +404,9 @@ export default function MyRecordsPage() {
                   }
                 }
                 
-                // 更新本地状态
+                // 更新本地状态，但不需要手动更新localStorage，因为addTeaRecord函数已经处理了
                 const updatedRecords = [newRecord, ...records]
                 setRecords(updatedRecords)
-                localStorage.setItem('teaRecords', JSON.stringify(updatedRecords))
               }
               
               setShowRecordEntry(false)
@@ -415,12 +414,12 @@ export default function MyRecordsPage() {
             } catch (error) {
               console.error('保存记录失败:', error)
               // 即使数据库保存失败，也要更新本地状态
+              // 但不需要手动更新localStorage，因为updateTeaRecord/addTeaRecord函数已经处理了
               if (editingRecord) {
                 const updatedRecords = records.map(record => 
                   record.id === editingRecord.id ? { ...record, ...updatedRecord } : record
                 )
                 setRecords(updatedRecords)
-                localStorage.setItem('teaRecords', JSON.stringify(updatedRecords))
               } else {
                 const newRecord = {
                   ...updatedRecord,
@@ -429,7 +428,6 @@ export default function MyRecordsPage() {
                 }
                 const updatedRecords = [newRecord, ...records]
                 setRecords(updatedRecords)
-                localStorage.setItem('teaRecords', JSON.stringify(updatedRecords))
               }
               
               setShowRecordEntry(false)

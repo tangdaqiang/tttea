@@ -190,29 +190,7 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
           result = await addTeaRecord(teaRecordData)
         }
         
-        // 无论结果如何，都确保本地状态正确更新
-        const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-        
-        if (editingRecord) {
-          // 更新本地记录
-          const updatedRecords = records.map((r: any) => 
-            r.id === editingRecord.id ? { ...teaRecordData, id: r.id } : r
-          )
-          localStorage.setItem('teaRecords', JSON.stringify(updatedRecords))
-        } else {
-          // 添加新记录到本地
-          const newRecord = {
-            ...teaRecordData,
-            id: Date.now().toString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-          
-          // 确保只保留与当前用户相关的记录
-          const userRecords = records.filter((r: any) => r.user_id === userId)
-          userRecords.push(newRecord)
-          localStorage.setItem('teaRecords', JSON.stringify(userRecords))
-        }
+        // 不需要手动更新localStorage，因为addTeaRecord/updateTeaRecord函数已经处理了
         
         if (result.success) {
           setSaveMessage(editingRecord ? '记录已更新！' : '记录已成功保存！')
