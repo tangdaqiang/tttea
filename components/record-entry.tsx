@@ -180,7 +180,6 @@ export default function RecordEntry({ onClose, editingRecord, onSave }: RecordEn
       }
       
       try {
-        const userId = await getCurrentUserIdClient()
         let result
         
         if (editingRecord) {
