@@ -282,7 +282,7 @@ export default function MyRecordsPage() {
                                 )}
                               </div>
                               <span className="text-sm text-gray-500">{record.cupSize === 'small' ? '小杯' : record.cupSize === 'medium' ? '中杯' : '大杯'}</span>
-                              <span className="text-sm text-gray-500">{record.sugarLevel}糖</span>
+                              <span className="text-sm text-gray-500">{getSugarLevelName(Number(record.sugarLevel))}</span>
                               {record.mood && (
                                 <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full font-medium">
                                   {getMoodLabel(record.mood)}
