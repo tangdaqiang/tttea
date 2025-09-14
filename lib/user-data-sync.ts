@@ -1,5 +1,12 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { supabase, isSupabaseConfigured } from './supabase'
+import { getCurrentUserIdClient } from './supabase'
+
+// Check if Supabase environment variables are available
+export const isSupabaseConfigured =
+  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL.length > 0 &&
+  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === "string" &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 0
 
 // 数据库类型定义
 export interface UserProfile {
@@ -48,7 +55,7 @@ export interface UserPreference {
 
 // 获取Supabase客户端
 function getSupabaseClient() {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     return null
   }
   return createClientComponentClient()
@@ -225,8 +232,8 @@ export async function getUserTeaRecords(userId: string, limit: number = 50, offs
       // 从localStorage获取记录
       const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
       const userRecords = records
-        .filter((r: TeaRecord) => r.user_id === userId)
-        .sort((a: TeaRecord, b: TeaRecord) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
+        .filter((r: any) => r.user_id === userId)
+        .sort((a: any, b: any) => new Date(b.recorded_at || b.timestamp).getTime() - new Date(a.recorded_at || a.timestamp).getTime())
         .slice(offset, offset + limit)
       
       return { success: true, data: userRecords }
