@@ -1,12 +1,5 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { getCurrentUserIdClient } from './supabase'
-
-// Check if Supabase environment variables are available
-export const isSupabaseConfigured =
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
-  process.env.NEXT_PUBLIC_SUPABASE_URL.length > 0 &&
-  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === "string" &&
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 0
+import { supabase, isSupabaseConfigured } from './supabase'
 
 // 数据库类型定义
 export interface UserProfile {
@@ -55,7 +48,7 @@ export interface UserPreference {
 
 // 获取Supabase客户端
 function getSupabaseClient() {
-  if (!isSupabaseConfigured) {
+  if (!isSupabaseConfigured || !supabase) {
     return null
   }
   return createClientComponentClient()
@@ -192,6 +185,25 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
       return { success: true, data: newRecord }
     }
 
+    // 检查并创建用户（如果不存在）
+    const { data: existingUser } = await client
+      .from('users')
+      .select('id')
+      .eq('id', record.user_id)
+      .single()
+      
+    // 如果用户不存在，创建一个基本用户记录
+    if (!existingUser) {
+      await client
+        .from('users')
+        .upsert({
+          id: record.user_id,
+          username: `user_${record.user_id.substring(0, 8)}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+    }
+
     // 转换糖分级别为数字并处理toppings字段
     const processedRecord = {
       ...record,
@@ -200,57 +212,22 @@ export async function addTeaRecord(record: Omit<TeaRecord, 'id' | 'created_at' |
       tea_product_id: record.tea_product_id || null // 避免外键约束错误
     }
 
-    try {
-      const { data, error } = await client
-        .from('tea_records')
-        .insert({
-          ...processedRecord,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('添加奶茶记录失败:', error)
-        
-        // 如果是外键约束错误，降级到本地存储
-        if (error.code === '23503') {
-          console.log('外键约束错误，降级到本地存储')
-          const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-          const newRecord = {
-            ...record,
-            id: crypto.randomUUID(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-          
-          // 添加新记录到现有记录列表中，保留所有用户的记录
-          records.push(newRecord)
-          localStorage.setItem('teaRecords', JSON.stringify(records))
-          return { success: true, data: newRecord, source: 'localStorage', message: '记录已保存到本地，稍后会同步到云端' }
-        }
-        
-        return { success: false, error: error.message }
-      }
-      
-      return { success: true, data, source: 'database' }
-    } catch (insertError) {
-      console.error('数据库插入异常:', insertError)
-      // 降级到本地存储
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const newRecord = {
-        ...record,
-        id: crypto.randomUUID(),
+    const { data, error } = await client
+      .from('tea_records')
+      .insert({
+        ...processedRecord,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }
-      
-      // 添加新记录到现有记录列表中，保留所有用户的记录
-      records.push(newRecord)
-      localStorage.setItem('teaRecords', JSON.stringify(records))
-      return { success: true, data: newRecord, source: 'localStorage', message: '记录已保存到本地，稍后会同步到云端' }
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('添加奶茶记录失败:', error)
+      return { success: false, error: error.message }
     }
+
+    return { success: true, data }
   } catch (error) {
     console.error('添加奶茶记录异常:', error)
     return { success: false, error: '添加奶茶记录失败' }
@@ -267,8 +244,8 @@ export async function getUserTeaRecords(userId: string, limit: number = 50, offs
       // 从localStorage获取记录
       const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
       const userRecords = records
-        .filter((r: any) => r.user_id === userId)
-        .sort((a: any, b: any) => new Date(b.recorded_at || b.timestamp).getTime() - new Date(a.recorded_at || a.timestamp).getTime())
+        .filter((r: TeaRecord) => r.user_id === userId)
+        .sort((a: TeaRecord, b: TeaRecord) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
         .slice(offset, offset + limit)
       
       return { success: true, data: userRecords }
@@ -331,64 +308,23 @@ export async function updateTeaRecord(recordId: string, userId: string, updates:
       })
     }
 
-    try {
-      const { data, error } = await client
-        .from('tea_records')
-        .update({
-          ...processedUpdates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', recordId)
-        .eq('user_id', userId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('更新奶茶记录失败:', error)
-        
-        // 如果是外键约束错误，降级到本地存储
-        if (error.code === '23503') {
-          console.log('外键约束错误，降级到本地存储')
-          const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-          const recordIndex = records.findIndex((r: any) => r.id === recordId && r.user_id === userId)
-          
-          if (recordIndex === -1) {
-            return { success: false, error: '记录不存在' }
-          }
-          
-          records[recordIndex] = {
-            ...records[recordIndex],
-            ...updates,
-            updated_at: new Date().toISOString()
-          }
-          
-          localStorage.setItem('teaRecords', JSON.stringify(records))
-          return { success: true, data: records[recordIndex] }
-        }
-        
-        return { success: false, error: error.message }
-      }
-      
-      return { success: true, data }
-    } catch (updateError) {
-      console.error('数据库更新异常:', updateError)
-      // 降级到本地存储
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const recordIndex = records.findIndex((r: any) => r.id === recordId && r.user_id === userId)
-      
-      if (recordIndex === -1) {
-        return { success: false, error: '记录不存在' }
-      }
-      
-      records[recordIndex] = {
-        ...records[recordIndex],
-        ...updates,
+    const { data, error } = await client
+      .from('tea_records')
+      .update({
+        ...processedUpdates,
         updated_at: new Date().toISOString()
-      }
-      
-      localStorage.setItem('teaRecords', JSON.stringify(records))
-      return { success: true, data: records[recordIndex] }
+      })
+      .eq('id', recordId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('更新奶茶记录失败:', error)
+      return { success: false, error: error.message }
     }
+
+    return { success: true, data }
   } catch (error) {
     console.error('更新奶茶记录异常:', error)
     return { success: false, error: '更新奶茶记录失败' }
@@ -410,39 +346,18 @@ export async function deleteTeaRecord(recordId: string, userId: string): Promise
       return { success: true }
     }
 
-    try {
-      const { error } = await client
-        .from('tea_records')
-        .delete()
-        .eq('id', recordId)
-        .eq('user_id', userId)
+    const { error } = await client
+      .from('tea_records')
+      .delete()
+      .eq('id', recordId)
+      .eq('user_id', userId)
 
-      if (error) {
-        console.error('删除奶茶记录失败:', error)
-        
-        // 如果是外键约束错误，降级到本地存储
-        if (error.code === '23503') {
-          console.log('外键约束错误，降级到本地存储')
-          const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-          const filteredRecords = records.filter((r: any) => !(r.id === recordId && r.user_id === userId))
-          
-          localStorage.setItem('teaRecords', JSON.stringify(filteredRecords))
-          return { success: true }
-        }
-        
-        return { success: false, error: error.message }
-      }
-      
-      return { success: true }
-    } catch (deleteError) {
-      console.error('数据库删除异常:', deleteError)
-      // 降级到本地存储
-      const records = JSON.parse(localStorage.getItem('teaRecords') || '[]')
-      const filteredRecords = records.filter((r: any) => !(r.id === recordId && r.user_id === userId))
-      
-      localStorage.setItem('teaRecords', JSON.stringify(filteredRecords))
-      return { success: true }
+    if (error) {
+      console.error('删除奶茶记录失败:', error)
+      return { success: false, error: error.message }
     }
+
+    return { success: true }
   } catch (error) {
     console.error('删除奶茶记录异常:', error)
     return { success: false, error: '删除奶茶记录失败' }
@@ -597,6 +512,25 @@ export async function migrateTeaRecordsFromLocalStorage(userId: string): Promise
 
     if (userRecords.length === 0) {
       return { success: true, migratedCount: 0 }
+    }
+
+    // 检查并创建用户（如果不存在）
+    const { data: existingUser } = await client
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single()
+      
+    // 如果用户不存在，创建一个基本用户记录
+    if (!existingUser) {
+      await client
+        .from('users')
+        .upsert({
+          id: userId,
+          username: `user_${userId.substring(0, 8)}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
     }
 
     // 检查数据库中已存在的记录，避免重复迁移
