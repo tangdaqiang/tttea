@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, TrendingUp, Database, HardDrive, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 import RecordEntry from "@/components/record-entry"
 import BudgetManager from "@/components/budget-manager"
@@ -284,9 +285,9 @@ export default function MyRecordsPage() {
                               <span className="text-sm text-gray-500">{record.cupSize === 'small' ? '小杯' : record.cupSize === 'medium' ? '中杯' : '大杯'}</span>
                               <span className="text-sm text-gray-500">{getSugarLevelName(Number(record.sugarLevel))}</span>
                               {record.mood && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full font-medium">
+                                <Badge variant="outline" className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full font-medium">
                                   {getMoodLabel(record.mood)}
-                                </span>
+                                </Badge>
                               )}
                             </div>
                           </div>
