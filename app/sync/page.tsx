@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUserIdClient } from '@/lib/supabase'
-import { migrateTeaRecordsFromLocalStorage, checkMigrationNeeded } from '@/lib/user-data-sync'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -14,10 +13,6 @@ export default function SyncPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string>('')
-  const [migrationStatus, setMigrationStatus] = useState<'idle' | 'checking' | 'migrating' | 'completed'>('idle')
-  const [migrationResult, setMigrationResult] = useState<{ success: boolean; migratedCount?: number; error?: string } | null>(null)
-  const [needsMigration, setNeedsMigration] = useState(false)
-  const [recordCounts, setRecordCounts] = useState({ local: 0, db: 0 })
   const { isSyncing, lastSyncTime } = useUserDataSync()
 
   useEffect(() => {
@@ -38,29 +33,6 @@ export default function SyncPage() {
     initUser()
   }, [router])
 
-  // 检查是否需要迁移数据
-  useEffect(() => {
-    const checkMigration = async () => {
-      if (!userId) return
-      
-      setMigrationStatus('checking')
-      try {
-        const result = await checkMigrationNeeded(userId)
-        setNeedsMigration(result.needsMigration)
-        setRecordCounts({
-          local: result.localRecordsCount,
-          db: result.dbRecordsCount
-        })
-      } catch (error) {
-        console.error('检查迁移状态失败:', error)
-      } finally {
-        setMigrationStatus('idle')
-      }
-    }
-    
-    checkMigration()
-  }, [userId])
-
   const handleSync = async () => {
     if (!userId) return
 
@@ -75,34 +47,6 @@ export default function SyncPage() {
     } catch (error) {
       setSyncStatus('error')
       setErrorMessage(error instanceof Error ? error.message : '同步失败')
-    }
-  }
-
-  // 执行数据迁移
-  const handleMigrate = async () => {
-    if (!userId || migrationStatus !== 'idle') return
-    
-    setMigrationStatus('migrating')
-    try {
-      const result = await migrateTeaRecordsFromLocalStorage(userId)
-      setMigrationResult(result)
-      
-      // 更新记录数量
-      if (result.success) {
-        const newResult = await checkMigrationNeeded(userId)
-        setRecordCounts({
-          local: newResult.localRecordsCount,
-          db: newResult.dbRecordsCount
-        })
-        setNeedsMigration(false)
-      }
-    } catch (error) {
-      setMigrationResult({
-        success: false,
-        error: error instanceof Error ? error.message : '迁移过程中发生错误'
-      })
-    } finally {
-      setMigrationStatus('completed')
     }
   }
 
@@ -124,60 +68,6 @@ export default function SyncPage() {
       </div>
 
       <div className="space-y-6">
-        {/* 数据迁移卡片 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>数据迁移</CardTitle>
-            <CardDescription>
-              将本地存储的奶茶记录迁移到云端数据库
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span>本地存储记录数:</span>
-                <span className="font-medium">{recordCounts.local}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>数据库记录数:</span>
-                <span className="font-medium">{recordCounts.db}</span>
-              </div>
-            </div>
-
-            {migrationStatus === 'checking' && (
-              <Alert variant="info">
-                <AlertDescription>正在检查迁移状态...</AlertDescription>
-              </Alert>
-            )}
-            
-            {needsMigration && migrationStatus !== 'checking' && (
-              <Alert variant="warning">
-                <AlertDescription>检测到有 {recordCounts.local} 条记录需要同步到数据库。</AlertDescription>
-              </Alert>
-            )}
-            
-            {migrationResult && (
-              <Alert variant={migrationResult.success ? "success" : "destructive"}>
-                <AlertDescription>
-                  {migrationResult.success
-                    ? `成功迁移了 ${migrationResult.migratedCount} 条记录到数据库`
-                    : `迁移失败: ${migrationResult.error}`
-                  }
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <Button
-              onClick={handleMigrate}
-              disabled={migrationStatus !== 'idle' || !needsMigration}
-              className="w-full"
-            >
-              {migrationStatus === 'migrating' ? '迁移中...' : '将记录迁移到数据库'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* 同步状态卡片 */}
         <Card>
           <CardHeader>
             <CardTitle>同步状态</CardTitle>
